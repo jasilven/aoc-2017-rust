@@ -19,9 +19,9 @@ fn parse_input(path: &str) -> Vec<Vec<usize>> {
     result
 }
 
-fn solve1(nums: &Vec<Vec<usize>>) -> usize {
+fn solve1(sorted_nums: &Vec<Vec<usize>>) -> usize {
     let mut result = 0;
-    for row_nums in nums {
+    for row_nums in sorted_nums {
         let first = row_nums.first().expect("first not found");
         let last = row_nums.last().expect("last not found");
         result += first.max(&last) - first.min(&last);
@@ -29,9 +29,25 @@ fn solve1(nums: &Vec<Vec<usize>>) -> usize {
     result
 }
 
+fn solve2(sorted_nums: &Vec<Vec<usize>>) -> usize {
+    let mut result = 0;
+    for row_nums in sorted_nums {
+        for i in 0..(row_nums.len() - 1) {
+            let smaller = row_nums[i];
+            for bigger in &row_nums[(i + 1)..] {
+                if (bigger % smaller) == 0 {
+                    result += bigger / smaller;
+                }
+            }
+        }
+    }
+    result
+}
+
 fn main() {
-    let data = parse_input("resources/day2_input.csv");
-    println!("Part 1: {}", solve1(&data));
+    let sorted_nums = parse_input("resources/day2_input.csv");
+    println!("Part 1: {}", solve1(&sorted_nums));
+    println!("Part 2: {}", solve2(&sorted_nums));
 }
 
 #[cfg(test)]
@@ -41,7 +57,12 @@ mod tests {
     #[test]
     fn test_solve1() {
         let data = parse_input("resources/day2_testdata.csv");
-        dbg!(&data);
         assert_eq!(18, solve1(&data));
+    }
+
+    #[test]
+    fn test_solve2() {
+        let data = parse_input("resources/day2_testdata2.csv");
+        assert_eq!(9, solve2(&data));
     }
 }
