@@ -37,6 +37,7 @@ fn solve2(sorted_nums: &Vec<Vec<usize>>) -> usize {
             for bigger in &row_nums[(i + 1)..] {
                 if (bigger % smaller) == 0 {
                     result += bigger / smaller;
+                    break;
                 }
             }
         }
