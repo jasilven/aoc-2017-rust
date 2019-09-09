@@ -9,6 +9,7 @@ fn parse_input(path: &str) -> Vec<Vec<usize>> {
     for line in reader.lines() {
         let line = line.expect("failed to read line");
         let mut nums: Vec<usize> = line
+            .trim()
             .split(',')
             .map(|s| s.parse::<usize>().expect("parse error"))
             .collect();
@@ -31,4 +32,16 @@ fn solve1(nums: &Vec<Vec<usize>>) -> usize {
 fn main() {
     let data = parse_input("resources/day2_input.csv");
     println!("Part 1: {}", solve1(&data));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_solve1() {
+        let data = parse_input("resources/day2_testdata.csv");
+        dbg!(&data);
+        assert_eq!(18, solve1(&data));
+    }
 }
