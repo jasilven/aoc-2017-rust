@@ -6,7 +6,7 @@ fn parse_input(fname: &str) -> Vec<String> {
     let file = File::open(fname).expect("unable to open file");
     let mut lines: Vec<String> = vec![];
     for line in BufReader::new(file).lines() {
-        let line = line.expect("unable to parse line");
+        let line = line.expect("unable to read line");
         lines.push(line);
     }
     lines
