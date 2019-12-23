@@ -61,17 +61,17 @@ fn main() {
 }
 
 mod tests {
-    #[allow(unused_imports)]
-    use super::*;
 
     #[test]
     fn test_part1() {
+        use super::*;
         let banks = parse_input("resources/day6_testdata.txt");
         assert_eq!(5, solve1(&banks).0);
     }
 
     #[test]
     fn test_part2() {
+        use super::*;
         let banks = parse_input("resources/day6_testdata.txt");
         assert_eq!(4, solve2(&banks));
     }

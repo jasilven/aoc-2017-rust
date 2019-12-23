@@ -60,11 +60,10 @@ fn main() {
 }
 
 mod tests {
-    #[allow(unused_imports)]
-    use super::{parse_input, solve1};
 
     #[test]
     fn test_part1() {
+        use super::{parse_input, solve1};
         let lines = parse_input("resources/day4_test.txt");
         assert_eq!(2, solve1(lines));
     }

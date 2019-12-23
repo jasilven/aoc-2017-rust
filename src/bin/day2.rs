@@ -53,16 +53,17 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_solve1() {
+        use super::*;
         let data = parse_input("resources/day2_testdata.csv");
         assert_eq!(18, solve1(&data));
     }
 
     #[test]
     fn test_solve2() {
+        use super::*;
         let data = parse_input("resources/day2_testdata2.csv");
         assert_eq!(9, solve2(&data));
     }

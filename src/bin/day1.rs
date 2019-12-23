@@ -41,10 +41,10 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_solve1() {
+        use super::*;
         let digits1 = vec![1, 1, 2, 2];
         let digits2 = vec![1, 1, 1, 1];
         let digits3 = vec![1, 2, 3, 4];
@@ -55,6 +55,7 @@ mod tests {
 
     #[test]
     fn test_solve2() {
+        use super::*;
         let digits1 = vec![1, 2, 1, 2];
         let digits2 = vec![1, 2, 2, 1];
         let digits3 = vec![1, 2, 3, 4, 2, 5];
