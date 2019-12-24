@@ -49,7 +49,7 @@ fn parse_line(line: &str) -> Op {
         caps[3].parse::<isize>().expect("unable to parse 3th value"),
         caps[4].to_string(),
         caps[5].to_string(),
-        caps[6].parse::<isize>().expect("unable to parse 6th value"),
+        caps[6].parse::<isize>().expect("unable to parse 5th value"),
     )
 }
 
@@ -67,19 +67,19 @@ fn eval_exp(a: isize, oper: &str, b: isize) -> Result<bool> {
 }
 
 fn execute(ops: &[Op]) -> Result<(HashMap<String, isize>, Option<isize>)> {
-    let mut result = HashMap::<String, isize>::new();
+    let mut regs = HashMap::<String, isize>::new();
     let mut all_time_max: Option<isize> = None;
     for op in ops {
-        let a = match result.get(&op.3) {
+        let a = match regs.get(&op.3) {
             Some(val) => *val,
             None => 0,
         };
 
         if eval_exp(a, &op.4, op.5)? {
-            if !result.contains_key(&op.0) {
-                result.insert(op.0.to_string(), 0);
+            if !regs.contains_key(&op.0) {
+                regs.insert(op.0.to_string(), 0);
             }
-            let reg = result.get_mut(&op.0).unwrap();
+            let reg = regs.get_mut(&op.0).unwrap();
             let reg_val = match op.1.as_str() {
                 "inc" => *reg + op.2,
                 "dec" => *reg - op.2,
@@ -95,7 +95,7 @@ fn execute(ops: &[Op]) -> Result<(HashMap<String, isize>, Option<isize>)> {
             }
         }
     }
-    Ok((result, all_time_max))
+    Ok((regs, all_time_max))
 }
 
 fn solve(ops: &[Op]) -> (isize, isize) {
@@ -106,7 +106,7 @@ fn solve(ops: &[Op]) -> (isize, isize) {
 
 fn parse_input(fname: &str) -> Result<Vec<Op>> {
     let mut result = vec![];
-    let file = File::open(fname).or_else(|e| Err(e))?;
+    let file = File::open(fname).or_else(Err)?;
     for line in BufReader::new(&file).lines() {
         let line = line?;
         result.push(parse_line(&line));
