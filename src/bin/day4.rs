@@ -2,14 +2,14 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
-fn parse_input(fname: &str) -> Vec<String> {
-    let file = File::open(fname).expect("unable to open file");
-    let mut lines: Vec<String> = vec![];
-    for line in BufReader::new(file).lines() {
-        let line = line.expect("unable to read line");
-        lines.push(line);
-    }
-    lines
+type Result<T> = std::result::Result<T, String>;
+
+fn parse_input(fname: &str) -> Result<Vec<String>> {
+    let file = File::open(fname).map_err(|e| e.to_string())?;
+    BufReader::new(file)
+        .lines()
+        .map(|line| line.map_err(|e| e.to_string()))
+        .collect()
 }
 
 fn solve1<T>(lines: T) -> usize
@@ -34,7 +34,6 @@ where
     T: IntoIterator<Item = String>,
 {
     let mut result = 0;
-
     for line in lines {
         let mut words: Vec<String> = line.split(' ').map(|s| s.to_string()).collect();
         for word in words.iter_mut() {
@@ -53,10 +52,11 @@ where
     result
 }
 
-fn main() {
-    let lines = parse_input("resources/day4_input.txt");
+fn main() -> Result<()> {
+    let lines = parse_input("resources/day4_input.txt")?;
     println!("part 1: {}", solve1(lines.clone()));
     println!("part 2: {}", solve2(lines));
+    Ok(())
 }
 
 mod tests {
@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn test_part1() {
         use super::{parse_input, solve1};
-        let lines = parse_input("resources/day4_test.txt");
+        let lines = parse_input("resources/day4_test.txt").unwrap();
         assert_eq!(2, solve1(lines));
     }
 }

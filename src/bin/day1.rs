@@ -1,17 +1,19 @@
 use std::fs::read_to_string;
 
-fn parse_input(path: &str) -> Vec<u8> {
-    let data = read_to_string(&path).expect("unable to read file");
-    let result: Vec<u8> = data
+type Result<T> = std::result::Result<T, String>;
+
+fn parse_input(path: &str) -> Result<Vec<u8>> {
+    read_to_string(&path)
+        .map_err(|e| e.to_string())?
         .chars()
-        .map(|ch| ch.to_digit(10).unwrap() as u8)
-        .collect();
-    result
+        .map(|ch| ch.to_digit(10).ok_or_else(|| "parse error".to_string()))
+        .map(|digit| Ok(digit.unwrap() as u8))
+        .collect()
 }
 
 fn solve1(digits: &[u8]) -> usize {
-    let mut result = 0usize;
-    let mut digits1: Vec<u8> = digits.iter().cloned().collect();
+    let mut result = 0;
+    let mut digits1: Vec<u8> = digits.to_vec();
     digits1.push(digits[0]);
     for window in digits1.windows(2) {
         if window[0] == window[1] {
@@ -22,7 +24,7 @@ fn solve1(digits: &[u8]) -> usize {
 }
 
 fn solve2(digits: &[u8]) -> usize {
-    let mut result = 0usize;
+    let mut result = 0;
     let cnt = digits.len();
     let offset = cnt / 2;
     for (index, digit) in digits.iter().enumerate() {
@@ -33,10 +35,11 @@ fn solve2(digits: &[u8]) -> usize {
     result
 }
 
-fn main() {
-    let digits = parse_input("resources/day1_input.txt");
+fn main() -> Result<()> {
+    let digits = parse_input("resources/day1_input.txt")?;
     println!("Part 1: {}", solve1(&digits));
     println!("Part 2: {}", solve2(&digits));
+    Ok(())
 }
 
 #[cfg(test)]
