@@ -3,5 +3,6 @@ target
 .vscode
 target
 .git
+.lsp
 .rustup
 tags
