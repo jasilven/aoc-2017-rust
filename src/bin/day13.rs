@@ -5,8 +5,14 @@ use std::io::BufReader;
 
 type Result<T> = std::result::Result<T, String>;
 
-fn parse_scanners(fname: &str) -> Result<HashMap<usize, usize>> {
-    let mut result = HashMap::<usize, usize>::new();
+#[derive(Debug)]
+struct Scanner {
+    range: usize,
+    pos: usize,
+}
+
+fn parse_scanners(fname: &str) -> Result<HashMap<usize, Scanner>> {
+    let mut result = HashMap::<usize, Scanner>::new();
     let f = File::open(fname).map_err(|e| e.to_string())?;
     for line in BufReader::new(f).lines() {
         let line = line.map_err(|e| e.to_string())?;
@@ -14,60 +20,90 @@ fn parse_scanners(fname: &str) -> Result<HashMap<usize, usize>> {
         let depth = sp[0].parse::<usize>().map_err(|e| e.to_string())?;
         let range = sp[1].parse::<usize>().map_err(|e| e.to_string())?;
 
-        result.insert(depth, range);
+        result.insert(depth, Scanner { range, pos: 0 });
     }
     Ok(result)
 }
 
-#[allow(dead_code)]
-fn move_scanners(
-    tick: usize,
-    scanner_pos: &mut HashMap<usize, usize>,
-    scanners: &HashMap<usize, usize>,
-) -> Result<()> {
-    for (scanner, pos) in scanner_pos.iter_mut() {
-        let range = scanners
-            .get(scanner)
-            .ok_or_else(|| format!("scanner range not found: {}", scanner))?;
-        let up = (tick / (range - 1) % 2) == 0;
-        if up {
-            *pos = (*pos + 1) % range;
+fn reset_scanners(scanners: &mut HashMap<usize, Scanner>) {
+    for (_, scanner) in scanners.iter_mut() {
+        scanner.pos = 0;
+    }
+}
+
+fn move_scanners(tick: usize, scanners: &mut HashMap<usize, Scanner>) -> Result<()> {
+    for (_, scanner) in scanners.iter_mut() {
+        if (tick / (scanner.range - 1) % 2) == 0 {
+            scanner.pos = (scanner.pos + 1) % scanner.range;
         } else {
-            *pos = (*pos - 1) % range;
+            scanner.pos = (scanner.pos - 1) % scanner.range;
         }
     }
     Ok(())
 }
 
-fn solve(scanners: &HashMap<usize, usize>) -> Result<usize> {
-    let mut packet_pos = 0;
-    let mut scanner_pos = HashMap::<usize, usize>::new();
-    let layers_cnt: usize = *scanners.keys().max().unwrap_or(&0);
+fn layers_cnt(scanners: &HashMap<usize, Scanner>) -> Result<usize> {
+    let result: usize = *scanners
+        .keys()
+        .max()
+        .ok_or_else(|| String::from("0 layers"))?;
+    Ok(result)
+}
+
+fn solve1(tick: usize, scanners: &mut HashMap<usize, Scanner>) -> Result<(usize, bool)> {
     let mut severity = 0;
+    let mut caught = false;
+    let layers_cnt = layers_cnt(&scanners)?;
+    let mut tick = tick;
+    let mut packet_pos = 0;
 
-    for scanner in scanners.keys() {
-        scanner_pos.insert(*scanner, 0);
-    }
-
-    let mut tick = 0;
     while packet_pos <= layers_cnt {
-        if let Some(&0) = scanner_pos.get(&packet_pos) {
-            if let Some(depth) = scanners.get(&packet_pos) {
-                severity += packet_pos * depth;
+        if let Some(scanner) = scanners.get(&packet_pos) {
+            if scanner.pos == 0 {
+                severity += packet_pos * scanner.range;
+                caught = true;
             }
         }
-        move_scanners(tick, &mut scanner_pos, &scanners)?;
+        move_scanners(tick, scanners)?;
         packet_pos += 1;
         tick += 1;
     }
 
-    Ok(severity)
+    Ok((severity, caught))
+}
+
+fn solve2(scanners: &mut HashMap<usize, Scanner>) -> Result<usize> {
+    let mut result = 0;
+    let layers_cnt = layers_cnt(&scanners)?;
+
+    for delay in 0.. {
+        let mut caught = false;
+        for tick in 0..=layers_cnt {
+            if let Some(scanner) = scanners.get(&tick) {
+                if (delay + tick) % (2 * scanner.range - 2) == 0 {
+                    caught = true;
+                    break;
+                }
+            }
+        }
+        if !caught {
+            result = delay;
+            break;
+        } else {
+            continue;
+        }
+    }
+    Ok(result)
 }
 
 fn main() -> Result<()> {
-    let scanners = parse_scanners("resources/day13_input.txt")?;
-    let part1 = solve(&scanners)?;
-    println!("part1: {:?}", part1);
+    let mut scanners = parse_scanners("resources/day13_input.txt")?;
+    let (severity, _) = solve1(0, &mut scanners)?;
+    println!("part 1: {}", severity);
+
+    reset_scanners(&mut scanners);
+    println!("part 2: {:?}", solve2(&mut scanners)?);
+
     Ok(())
 }
 
@@ -77,7 +113,14 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        let scanners = parse_scanners("resources/day13_testdata.txt").unwrap();
-        assert_eq!(24, solve(&scanners).unwrap())
+        let mut scanners = parse_scanners("resources/day13_testdata.txt").unwrap();
+        let (severity, _) = solve1(0, &mut scanners).unwrap();
+        assert_eq!(24, severity);
+    }
+
+    #[test]
+    fn test_part2() {
+        let mut scanners = parse_scanners("resources/day13_testdata.txt").unwrap();
+        assert_eq!(10, solve2(&mut scanners).unwrap())
     }
 }
