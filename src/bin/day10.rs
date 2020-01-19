@@ -40,12 +40,14 @@ fn main() -> Result<()> {
     let result2 = solve2(&parse_lengths2(input_file)?);
     println!("part 1: {}", result1[0] * result1[1]);
     println!("part 2: {}", result2);
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_solve2() {
         let result = solve2(&[]);

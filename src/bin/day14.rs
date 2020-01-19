@@ -17,7 +17,6 @@ fn hex2bin(input: &str) -> Result<String> {
 
 fn build_grid(key: &str) -> Result<HashSet<(isize, isize)>> {
     let mut result = HashSet::<_, _>::new();
-
     for i in 0..128 {
         let key = format!("{}-{}", key, i);
 
@@ -82,6 +81,7 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
