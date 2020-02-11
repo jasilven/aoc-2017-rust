@@ -1,17 +1,12 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
+use std::thread;
+use std::time::Duration;
 
-//     snd X plays a sound with a frequency equal to the value of X.
-//     set X Y sets register X to the value of Y.
-//     add X Y increases register X by the value of Y.
-//     mul X Y sets register X to the result of multiplying the value contained in register X by the value of Y.
-//     mod X Y sets register X to the remainder of dividing the value contained in register X by the value of Y (that is, it sets X to the result of X modulo Y).
-//     rcv X recovers the frequency of the last sound played, but only when the value of X is not zero. (If it is zero, the command does nothing.)
-//     jgz X Y jumps with an offset of the value of Y, but only if the value of X is greater than zero. (An offset of 2 skips the next instruction, an offset of -1 jumps to the previous instruction, and so on.)
-//
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Value {
     Int(i64),
     Reg(char),
@@ -26,7 +21,7 @@ impl From<&str> for Value {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum OpCode {
     Snd(Value),
     Set(char, Value),
@@ -40,7 +35,7 @@ enum OpCode {
 struct Cpu {
     pc: i64,
     regs: HashMap<char, i64>,
-    sound: Option<i64>,
+    result: Option<i64>,
 }
 
 impl Cpu {
@@ -48,7 +43,7 @@ impl Cpu {
         Cpu {
             pc: 0,
             regs: HashMap::new(),
-            sound: None,
+            result: None,
         }
     }
 
@@ -60,7 +55,7 @@ impl Cpu {
                         Value::Int(i) => i,
                         Value::Reg(ch) => self.regs.get(&ch).unwrap_or(&0),
                     };
-                    self.sound = Some(*x);
+                    self.result = Some(*x);
                     self.pc += 1;
                 }
                 OpCode::Set(ch, val) => {
@@ -126,7 +121,110 @@ impl Cpu {
             }
         }
 
-        Ok(self.sound)
+        Ok(self.result)
+    }
+}
+
+struct Cpu2 {
+    pc: i64,
+    regs: HashMap<char, i64>,
+    result: i64,
+    sender: Sender<i64>,
+    receiver: Receiver<i64>,
+}
+
+impl Cpu2 {
+    fn new(sender: Sender<i64>, receiver: Receiver<i64>, p_val: i64) -> Cpu2 {
+        let mut regs = HashMap::new();
+        regs.insert('p', p_val);
+        Cpu2 {
+            pc: 0,
+            regs,
+            result: 0,
+            sender,
+            receiver,
+        }
+    }
+
+    fn run(&mut self, opcodes: &[OpCode]) -> Result<i64, String> {
+        while self.pc >= 0 && self.pc < opcodes.len() as i64 {
+            match &opcodes[self.pc as usize] {
+                OpCode::Snd(val) => {
+                    let x = match val {
+                        Value::Int(i) => i,
+                        Value::Reg(ch) => self.regs.get(&ch).unwrap_or(&0),
+                    };
+                    self.sender.send(*x).unwrap();
+                    self.result += 1;
+                    self.pc += 1;
+                }
+                OpCode::Set(ch, val) => {
+                    let y = match val {
+                        Value::Int(i) => *i,
+                        Value::Reg(ch) => *self.regs.get(&ch).unwrap_or(&0),
+                    };
+                    self.regs.insert(*ch, y);
+                    self.pc += 1;
+                }
+                OpCode::Add(ch, val) => {
+                    let x = *self.regs.get(&ch).unwrap_or(&0);
+                    let y = match val {
+                        Value::Int(i) => *i,
+                        Value::Reg(ch) => *self.regs.get(&ch).unwrap_or(&0),
+                    };
+                    self.regs.insert(*ch, x + y);
+                    self.pc += 1;
+                }
+                OpCode::Mul(ch, val) => {
+                    let x = *self.regs.get(&ch).unwrap_or(&0);
+                    let y = match val {
+                        Value::Int(i) => *i,
+                        Value::Reg(ch) => *self.regs.get(&ch).unwrap_or(&0),
+                    };
+                    self.regs.insert(*ch, x * y);
+                    self.pc += 1;
+                }
+                OpCode::Mod(ch, val) => {
+                    let x = *self.regs.get(&ch).unwrap_or(&0);
+                    let y = match val {
+                        Value::Int(i) => *i,
+                        Value::Reg(ch) => *self.regs.get(&ch).unwrap_or(&0),
+                    };
+                    self.regs.insert(*ch, x % y);
+                    self.pc += 1;
+                }
+                OpCode::Rcv(Value::Reg(ch)) => {
+                    let d = Duration::from_millis(500);
+                    match self.receiver.recv_timeout(d).map_err(|e| e.to_string()) {
+                        Ok(i) => {
+                            self.regs.insert(*ch, i);
+                            self.pc += 1;
+                        }
+                        _ => break,
+                    }
+                }
+                OpCode::Rcv(Value::Int(_)) => {
+                    return Err("Wrong opcode: OpCode::Rcv(Value::Int(x))".into())
+                }
+                OpCode::Jgz(val1, val2) => {
+                    let x = match val1 {
+                        Value::Int(i) => i,
+                        Value::Reg(ch) => self.regs.get(&ch).unwrap_or(&0),
+                    };
+                    if x > &0 {
+                        let y = match val2 {
+                            Value::Int(i) => i,
+                            Value::Reg(ch) => self.regs.get(&ch).unwrap_or(&0),
+                        };
+                        self.pc += y;
+                    } else {
+                        self.pc += 1;
+                    }
+                }
+            }
+        }
+
+        Ok(self.result)
     }
 }
 
@@ -174,7 +272,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut cpu = Cpu::new();
     cpu.run(&ops)?;
 
-    println!("part 1: {:?}", &cpu.sound.unwrap());
+    println!("part 1: {:?}", &cpu.result.unwrap());
 
+    let (sa, ra) = mpsc::channel();
+    let (sb, rb) = mpsc::channel();
+
+    let mut cpu2_a = Cpu2::new(sa, rb, 0);
+    let mut cpu2_b = Cpu2::new(sb, ra, 1);
+    let ops2 = ops.clone();
+
+    let t1 = thread::spawn(move || {
+        cpu2_a.run(&ops).unwrap();
+        cpu2_a.result
+    });
+    let t2 = thread::spawn(move || {
+        cpu2_b.run(&ops2).unwrap();
+        cpu2_b.result
+    });
+
+    let _ = t1.join().unwrap();
+    let res2 = t2.join().unwrap();
+
+    println!("part 2: {}", &res2);
     Ok(())
 }
