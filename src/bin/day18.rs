@@ -296,3 +296,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("part 2: {}", &res2);
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn part1() {
+        let ops = parse_ops("resources/day18_testdata.txt").unwrap();
+        let mut cpu = Cpu::new();
+        cpu.run(&ops).unwrap();
+
+        assert_eq!(4, cpu.result.unwrap());
+    }
+}
