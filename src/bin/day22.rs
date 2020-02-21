@@ -1,5 +1,4 @@
-use failure::bail;
-use failure::Error;
+use failure::{bail, Error};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufRead;
@@ -7,6 +6,7 @@ use std::io::BufReader;
 
 type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Clone, Debug)]
 enum Direction {
     Up,
     Right,
@@ -14,6 +14,7 @@ enum Direction {
     Left,
 }
 
+#[derive(Clone, Debug)]
 enum Status {
     Clean,
     Weakened,
@@ -21,6 +22,7 @@ enum Status {
     Flagged,
 }
 
+#[derive(Clone, Debug)]
 struct Virus {
     position: (isize, isize),
     direction: Direction,
@@ -57,6 +59,7 @@ impl Virus {
     }
 
     fn burst(&mut self, infections: &mut HashMap<(isize, isize), Status>) -> bool {
+        use Direction::*;
         let mut infection = false;
 
         if let Some(Status::Infected) = infections.get(&self.position) {
@@ -69,30 +72,70 @@ impl Virus {
         }
 
         self.position = match self.direction {
-            Direction::Up => (self.position.0, self.position.1 - 1),
-            Direction::Right => (self.position.0 + 1, self.position.1),
-            Direction::Down => (self.position.0, self.position.1 + 1),
-            Direction::Left => (self.position.0 - 1, self.position.1),
+            Up => (self.position.0, self.position.1 - 1),
+            Right => (self.position.0 + 1, self.position.1),
+            Down => (self.position.0, self.position.1 + 1),
+            Left => (self.position.0 - 1, self.position.1),
+        };
+
+        infection
+    }
+
+    fn burst2(&mut self, infections: &mut HashMap<(isize, isize), Status>) -> bool {
+        use Direction::*;
+        use Status::*;
+
+        let mut infection = false;
+
+        match infections.get(&self.position) {
+            Some(Weakened) => {
+                infections.insert(self.position, Infected);
+                infection = true;
+            }
+            Some(Infected) => {
+                infections.insert(self.position, Flagged);
+                self.turn_right();
+            }
+            Some(Flagged) => {
+                infections.insert(self.position, Clean);
+                self.turn_right();
+                self.turn_right();
+            }
+            Some(Clean) | _ => {
+                infections.insert(self.position, Weakened);
+                self.turn_left();
+            }
+        }
+
+        self.position = match self.direction {
+            Up => (self.position.0, self.position.1 - 1),
+            Right => (self.position.0 + 1, self.position.1),
+            Down => (self.position.0, self.position.1 + 1),
+            Left => (self.position.0 - 1, self.position.1),
         };
 
         infection
     }
 
     fn turn_left(&mut self) {
+        use Direction::*;
+
         self.direction = match self.direction {
-            Direction::Up => Direction::Left,
-            Direction::Right => Direction::Up,
-            Direction::Down => Direction::Right,
-            Direction::Left => Direction::Down,
+            Up => Left,
+            Right => Up,
+            Down => Right,
+            Left => Down,
         };
     }
 
     fn turn_right(&mut self) {
+        use Direction::*;
+
         self.direction = match self.direction {
-            Direction::Up => Direction::Right,
-            Direction::Right => Direction::Down,
-            Direction::Down => Direction::Left,
-            Direction::Left => Direction::Up,
+            Up => Right,
+            Right => Down,
+            Down => Left,
+            Left => Up,
         };
     }
 }
@@ -109,11 +152,24 @@ fn solve1(mut infections: HashMap<(isize, isize), Status>, mut virus: Virus) -> 
     result
 }
 
+fn solve2(mut infections: HashMap<(isize, isize), Status>, mut virus: Virus) -> isize {
+    let mut result = 0;
+
+    for _ in 0..10_000_000 {
+        if virus.burst2(&mut infections) {
+            result += 1;
+        }
+    }
+
+    result
+}
+
 fn main() -> Result<()> {
     let infections = parse_infections("resources/day22_input.txt")?;
     let virus = Virus::new((12, 12), Direction::Up);
 
-    println!("part 1: {}", solve1(infections, virus));
+    println!("part 1: {}", solve1(infections.clone(), virus.clone()));
+    println!("part 2: {}", solve2(infections, virus));
 
     Ok(())
 }
